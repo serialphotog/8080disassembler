@@ -179,7 +179,7 @@ int disassemble(unsigned char *buffer, int pc)
 			opbytes = 3;
 			break;
 		case 0x22:
-			printf("SHLD\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("SHLD\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0x23:
@@ -202,7 +202,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("DAD\tH");
 			break;
 		case 0x2a:
-			printf("LHLD\t #$0x%02x%02x", opcode[2], opcode[1]);
+			printf("LHLD\t 0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0x2b:
@@ -229,7 +229,7 @@ int disassemble(unsigned char *buffer, int pc)
 			opbytes = 3;
 			break;
 		case 0x32:
-			printf("STA\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("STA\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0x33:
@@ -252,7 +252,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("DAD\tSP");
 			break;
 		case 0x3a:
-			printf("LDA\t#$0x%02x%02X", opcode[2], opcode[1]);
+			printf("LDA\t0x%02x%02X", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0x3b:
@@ -662,15 +662,15 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("POP\tB");
 			break;
 		case 0xc2:
-			printf("JNZ\t#$0x%02x%02X", opcode[2], opcode[1]);
+			printf("JNZ\t0x%02x%02X", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xc3:
-			printf("JMP\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JMP\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xc4:
-			printf("CNZ\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CNZ\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xc5:
@@ -690,15 +690,15 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("RET");
 			break;
 		case 0xca:
-			printf("JZ\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JZ\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xcc:
-			printf("CZ\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CZ\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xcd:
-			printf("CALL\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CALL\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xce:
@@ -715,7 +715,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("POP\tD");
 			break;
 		case 0xd2:
-			printf("JNC\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JNC\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xd3:
@@ -723,7 +723,7 @@ int disassemble(unsigned char *buffer, int pc)
 			opbytes = 2;
 			break;
 		case 0xd4:
-			printf("CNC\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CNC\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xd5:
@@ -740,7 +740,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("RC");
 			break;
 		case 0xda: 
-			printf("JC\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JC\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xdb:
@@ -748,7 +748,7 @@ int disassemble(unsigned char *buffer, int pc)
 			opbytes = 2;
 			break;
 		case 0xdc:
-			printf("CC\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CC\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xde:
@@ -765,14 +765,14 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("POP\tH");
 			break;
 		case 0xe2:
-			printf("JPO\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JPO\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xe3:
 			printf("XTHL");
 			break;
 		case 0xe4:
-			printf("CPO\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CPO\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xe5:
@@ -792,14 +792,14 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("PCHL");
 			break;
 		case 0xea:
-			printf("JPE\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JPE\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xeb:
 			printf("XCHG");
 			break;
 		case 0xec:
-			printf("CPE\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CPE\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xee:
@@ -816,14 +816,14 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("POP\tPSW");
 			break;
 		case 0xf2:
-			printf("JP\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JP\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xf3:
 			printf("DI");
 			break;
 		case 0xf4: 
-			printf("CP\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CP\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xf5:
@@ -843,14 +843,14 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("SPHL");
 			break;
 		case 0xfa:
-			printf("JM\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("JM\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xfb:
 			printf("EI");
 			break;
 		case 0xfc:
-			printf("CM\t#$0x%02x%02x", opcode[2], opcode[1]);
+			printf("CM\t0x%02x%02x", opcode[2], opcode[1]);
 			opbytes = 3;
 			break;
 		case 0xfe:
