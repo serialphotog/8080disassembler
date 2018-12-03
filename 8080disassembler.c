@@ -862,7 +862,7 @@ int disassemble(unsigned char *buffer, int pc)
 			break;
 		default:
 			// We encountered an unknown instruction
-			printf("Unkown Instruction: 0x%02x", *opcode);
+			printf("Unknown Instruction: 0x%02x", *opcode);
 			break;
 	}
 
