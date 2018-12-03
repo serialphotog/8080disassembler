@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 //
 // Returns:
 //		int - The new program counter location. The program counter is incremented to track
-//			  where the next instruction is, paticurly after a multi-byte instruction is
+//			  where the next instruction is, particularly after a multi-byte instruction is
 //			  encountered.
 int disassemble(unsigned char *buffer, int pc)
 {
