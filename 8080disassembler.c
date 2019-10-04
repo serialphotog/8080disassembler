@@ -48,6 +48,8 @@ int main(int argc, char **argv)
 		pc += disassemble(buffer, pc);
 	}
 
+	free(buffer);
+
 	return 0;
 }
 
