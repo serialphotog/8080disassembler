@@ -1,6 +1,6 @@
 # Intel 8080 Disassembler
 
-This is an extremely simple disassembler for the Intel 8080 microprocessor. It will produce the disassembly for the supplied binary file from the command line. 
+This is an extremely simple disassembler for the Intel 8080 microprocessor. It will produce the disassembly for the supplied binary file from the command line.
 
 ## Usage
 
@@ -9,6 +9,9 @@ $ 8080disassembler /path/to/binary.bin
 ```
 
 ## License
+Copyright 2022 JR Sawyer <jrsawyer@gmail.com>
+Adding some features and fixing some bugs to this original work by Adam Thompson.
+
 
 Copyright 2018 Adam Thompson <adam@serialphotog.com>
 
