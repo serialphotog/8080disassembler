@@ -1,3 +1,6 @@
+// Copyright 2022 JR Sawyer <jrsawyer@gmail.com>
+// Adding some features and fixing some bugs to this original work by Adam Thompson.
+//
 // Copyright 2018 Adam Thompson <adam@serialphotog.com>
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
