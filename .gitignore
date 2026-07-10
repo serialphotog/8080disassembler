@@ -1,2 +1,4 @@
 *.out
-
+tests/test_disassembler
+tests/test_disassembler-sanitize
+8080disassembler

@@ -285,7 +285,7 @@ static const Instruction instructions[256] = {
 	[0xff] = { "RST\t7", 1 },
 };
 
-static size_t disassemble(const uint8_t *buffer, size_t size, size_t pc);
+static size_t disassemble(FILE *out, FILE *err, const uint8_t *buffer, size_t size, size_t pc);
 
 // Entry point
 // First argument is treated as the path to the file to disassemble
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
 	size_t pc = 0;
 	while (pc < fsize)
 	{
-		size_t instruction_length = disassemble(buffer, fsize, pc);
+		size_t instruction_length = disassemble(stdout, stderr, buffer, fsize, pc);
 		if (instruction_length == 0)
 		{
 			free(buffer);
@@ -366,42 +366,44 @@ int main(int argc, char **argv)
 // Performs the actual disassembly of an instruction
 //
 // Params:
+//		FILE *out - The stream to receive disassembled instructions
+//		FILE *err - The stream to receive decoding errors
 //		const uint8_t *buffer - The buffer containing the machine code
 //		size_t size - The size of the machine-code buffer
 //		size_t pc - The program counter. Used to track our place in the buffer
 //
 // Returns:
 //		size_t - The instruction length, or zero if the instruction is truncated or invalid
-static size_t disassemble(const uint8_t *buffer, size_t size, size_t pc)
+static size_t disassemble(FILE *out, FILE *err, const uint8_t *buffer, size_t size, size_t pc)
 {
 	const Instruction *instruction = &instructions[buffer[pc]];
 
 	if (instruction->length > size - pc)
 	{
-		fprintf(stderr, "Error: truncated instruction at 0x%04zx (need %u bytes, have %zu)\n",
+		fprintf(err, "Error: truncated instruction at 0x%04zx (need %u bytes, have %zu)\n",
 				pc, (unsigned int)instruction->length, size - pc);
 		return 0;
 	}
 
-	printf("0x%04zx  ", pc);
+	fprintf(out, "0x%04zx  ", pc);
 	switch (instruction->length)
 	{
 		case 1:
-			printf("%s", instruction->format);
+			fprintf(out, "%s", instruction->format);
 			break;
 		case 2:
-			printf(instruction->format, (unsigned int)buffer[pc + 1]);
+			fprintf(out, instruction->format, (unsigned int)buffer[pc + 1]);
 			break;
 		case 3:
-			printf(instruction->format, (unsigned int)buffer[pc + 2],
+			fprintf(out, instruction->format, (unsigned int)buffer[pc + 2],
 					(unsigned int)buffer[pc + 1]);
 			break;
 		default:
-			fprintf(stderr, "Error: invalid instruction length for opcode 0x%02x\n",
+			fprintf(err, "Error: invalid instruction length for opcode 0x%02x\n",
 					(unsigned int)buffer[pc]);
 			return 0;
 	}
-	printf("\n");
+	fprintf(out, "\n");
 
 	return instruction->length;
 }

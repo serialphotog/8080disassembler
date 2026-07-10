@@ -8,6 +8,21 @@ This is an extremely simple disassembler for the Intel 8080 microprocessor. It w
 $ 8080disassembler /path/to/binary.bin 
 ```
 
+## Development
+
+**Build:**
+
+```bash
+make
+```
+
+**Test:**
+
+```bash
+make test
+make sanitize
+```
+
 ## License
 
 Copyright 2018 Adam Thompson <adam@serialphotog.com>
