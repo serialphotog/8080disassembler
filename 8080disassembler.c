@@ -16,41 +16,86 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 // Forward declaration for the disassemble routine.
-int disassemble(unsigned char*, int);
+static size_t disassemble(const uint8_t *buffer, size_t size, size_t pc);
 
 // Entry point
 // First argument is treated as the path to the file to disassemble
 int main(int argc, char **argv)
 {
+	if (argc != 2)
+	{
+		fprintf(stderr, "Usage: %s /path/to/binary.bin\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
 	FILE *f = fopen(argv[1], "rb");
 	if (f == NULL)
 	{
-		printf("Error: couldn't open %s\n", argv[1]);
-		exit(1);
+		fprintf(stderr, "Error: couldn't open %s\n", argv[1]);
+		return EXIT_FAILURE;
 	}
 
 	// Read the file into a memory buffer
-	fseek(f, 0L, SEEK_END);
-	int fsize = ftell(f);
-	fseek(f, 0L, SEEK_SET);
+	if (fseek(f, 0L, SEEK_END) != 0)
+	{
+		fprintf(stderr, "Error: couldn't seek in %s\n", argv[1]);
+		fclose(f);
+		return EXIT_FAILURE;
+	}
+	long file_length = ftell(f);
+	if (file_length < 0 || fseek(f, 0L, SEEK_SET) != 0)
+	{
+		fprintf(stderr, "Error: couldn't determine the size of %s\n", argv[1]);
+		fclose(f);
+		return EXIT_FAILURE;
+	}
 
-	unsigned char *buffer = malloc(fsize);
-	fread(buffer, fsize, 1, f);
-	fclose(f);
+	size_t fsize = (size_t)file_length;
+	uint8_t *buffer = NULL;
+	if (fsize > 0)
+	{
+		buffer = malloc(fsize);
+		if (buffer == NULL)
+		{
+			fprintf(stderr, "Error: couldn't allocate memory for %s\n", argv[1]);
+			fclose(f);
+			return EXIT_FAILURE;
+		}
+		if (fread(buffer, 1, fsize, f) != fsize)
+		{
+			fprintf(stderr, "Error: couldn't read %s\n", argv[1]);
+			free(buffer);
+			fclose(f);
+			return EXIT_FAILURE;
+		}
+	}
+	if (fclose(f) != 0)
+	{
+		fprintf(stderr, "Error: couldn't close %s\n", argv[1]);
+		free(buffer);
+		return EXIT_FAILURE;
+	}
 
 	// Perform disassembly
-	int pc = 0;
+	size_t pc = 0;
 	while (pc < fsize)
 	{
-		pc += disassemble(buffer, pc);
+		size_t instruction_length = disassemble(buffer, fsize, pc);
+		if (instruction_length == 0)
+		{
+			free(buffer);
+			return EXIT_FAILURE;
+		}
+		pc += instruction_length;
 	}
 
 	free(buffer);
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 // Performs the actual disassembly of an instruction
@@ -63,11 +108,38 @@ int main(int argc, char **argv)
 //		int - The new program counter location. The program counter is incremented to track
 //			  where the next instruction is, particularly after a multi-byte instruction is
 //			  encountered.
-int disassemble(unsigned char *buffer, int pc)
+static size_t disassemble(const uint8_t *buffer, size_t size, size_t pc)
 {
-	unsigned char *opcode = &buffer[pc];
-	int opbytes = 1;
-	printf("0x%04x  ", pc);
+	const uint8_t *opcode = &buffer[pc];
+	size_t opbytes = 1;
+
+	/* Determine the encoded length before reading any operand bytes. */
+	switch (*opcode)
+	{
+		case 0x01: case 0x11: case 0x21: case 0x22: case 0x2a:
+		case 0x31: case 0x32: case 0x3a: case 0xc2: case 0xc3:
+		case 0xc4: case 0xca: case 0xcc: case 0xcd: case 0xd2:
+		case 0xd4: case 0xda: case 0xdc: case 0xe2: case 0xe4:
+		case 0xea: case 0xec: case 0xf2: case 0xf4: case 0xfa:
+		case 0xfc:
+			opbytes = 3;
+			break;
+		case 0x06: case 0x0e: case 0x16: case 0x1e: case 0x26:
+		case 0x2e: case 0x36: case 0x3e: case 0xc6: case 0xce:
+		case 0xd3: case 0xd6: case 0xdb: case 0xde: case 0xe6:
+		case 0xee: case 0xf6: case 0xfe:
+			opbytes = 2;
+			break;
+		default:
+			break;
+	}
+	if (opbytes > size - pc)
+	{
+		fprintf(stderr, "Error: truncated instruction at 0x%04zx (need %zu bytes, have %zu)\n",
+				pc, opbytes, size - pc);
+		return 0;
+	}
+	printf("0x%04zx  ", pc);
 
 	switch (*opcode)
 	{
@@ -146,7 +218,8 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("DCR\tD");
 			break;
 		case 0x16:
-			printf("DCR\tD");
+			printf("MVI\tD, #$0x%02x", opcode[1]);
+			opbytes = 2;
 			break;
 		case 0x17:
 			printf("RAL");
@@ -174,7 +247,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("RAR");
 			break;
 		case 0x20:
-			printf("RIM");
+			printf("NOP");
 			break;
 		case 0x21:
 			printf("LXI\tH, #$0x%02x%02x", opcode[2], opcode[1]);
@@ -224,7 +297,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("CMA");
 			break;
 		case 0x30:
-			printf("SIM");
+			printf("NOP");
 			break;
 		case 0x31:
 			printf("LXI\tSP, #$0x%02x%02x", opcode[2], opcode[1]);
@@ -496,7 +569,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("ADC\tC");
 			break;
 		case 0x8a:
-			printf("ADC\tE");
+			printf("ADC\tD");
 			break;
 		case 0x8b:
 			printf("ADC\tE");
@@ -832,7 +905,7 @@ int disassemble(unsigned char *buffer, int pc)
 			printf("PUSH\tPSW");
 			break;
 		case 0xf6:
-			printf("ORD\t#$0x%02x", opcode[1]);
+			printf("ORI\t#$0x%02x", opcode[1]);
 			opbytes = 2;
 			break;
 		case 0xf7:
