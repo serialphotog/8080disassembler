@@ -1,4 +1,4 @@
-// Copyright 2018 Adam Thompson <adam@serialphotog.com>
+// Copyright 2018-2026, Adam Thompson <adam@hackeradam.com>
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
 // and associated documentation files (the "Software"), to deal in the Software without restriction, 
@@ -20,6 +20,271 @@
 #include <stdlib.h>
 
 // Forward declaration for the disassemble routine.
+typedef struct
+{
+	const char *format;
+	uint8_t length;
+} Instruction;
+
+static const Instruction instructions[256] = {
+	[0x00] = { "NOP", 1 },
+	[0x01] = { "LXI\tB, #$0x%02x%02x", 3 },
+	[0x02] = { "STAX\tB", 1 },
+	[0x03] = { "INX\tB", 1 },
+	[0x04] = { "INR\tB", 1 },
+	[0x05] = { "DCR\tB", 1 },
+	[0x06] = { "MVI\tB, #$0x%02x", 2 },
+	[0x07] = { "RLC", 1 },
+	[0x08] = { "NOP", 1 },
+	[0x09] = { "DAD\tB", 1 },
+	[0x0a] = { "LDAX\tB", 1 },
+	[0x0b] = { "DCX\tB", 1 },
+	[0x0c] = { "INR\tC", 1 },
+	[0x0d] = { "DCR\tC", 1 },
+	[0x0e] = { "MVI\tC, #$0x%02x", 2 },
+	[0x0f] = { "RRC", 1 },
+	[0x10] = { "NOP", 1 },
+	[0x11] = { "LXI\tD, #$0x%02x%02x", 3 },
+	[0x12] = { "STAX\tD", 1 },
+	[0x13] = { "INX\tD", 1 },
+	[0x14] = { "INR\tD", 1 },
+	[0x15] = { "DCR\tD", 1 },
+	[0x16] = { "MVI\tD, #$0x%02x", 2 },
+	[0x17] = { "RAL", 1 },
+	[0x18] = { "NOP", 1 },
+	[0x19] = { "DAD\tD", 1 },
+	[0x1a] = { "LDAX\tD", 1 },
+	[0x1b] = { "DCX\tD", 1 },
+	[0x1c] = { "INR\tE", 1 },
+	[0x1d] = { "DCR\tE", 1 },
+	[0x1e] = { "MVI\tE, #$0x%02x", 2 },
+	[0x1f] = { "RAR", 1 },
+	[0x20] = { "NOP", 1 },
+	[0x21] = { "LXI\tH, #$0x%02x%02x", 3 },
+	[0x22] = { "SHLD\t0x%02x%02x", 3 },
+	[0x23] = { "INX\tH", 1 },
+	[0x24] = { "INR\tH", 1 },
+	[0x25] = { "DCR\tH", 1 },
+	[0x26] = { "MVI\tH, #$0x%02x", 2 },
+	[0x27] = { "DAA", 1 },
+	[0x28] = { "NOP", 1 },
+	[0x29] = { "DAD\tH", 1 },
+	[0x2a] = { "LHLD\t 0x%02x%02x", 3 },
+	[0x2b] = { "DCX\tH", 1 },
+	[0x2c] = { "INR\tL", 1 },
+	[0x2d] = { "DCR\tL", 1 },
+	[0x2e] = { "MVI\tL, #$0x%02x", 2 },
+	[0x2f] = { "CMA", 1 },
+	[0x30] = { "NOP", 1 },
+	[0x31] = { "LXI\tSP, #$0x%02x%02x", 3 },
+	[0x32] = { "STA\t0x%02x%02x", 3 },
+	[0x33] = { "INX\tSP", 1 },
+	[0x34] = { "INR\tM", 1 },
+	[0x35] = { "DCR\tM", 1 },
+	[0x36] = { "MVI\tM, #$0x%02x", 2 },
+	[0x37] = { "STC", 1 },
+	[0x38] = { "NOP", 1 },
+	[0x39] = { "DAD\tSP", 1 },
+	[0x3a] = { "LDA\t0x%02x%02X", 3 },
+	[0x3b] = { "DCX\tSP", 1 },
+	[0x3c] = { "INR\tA", 1 },
+	[0x3d] = { "DCR\tA", 1 },
+	[0x3e] = { "MVI\tA, #$0x%02x", 2 },
+	[0x3f] = { "CMC", 1 },
+	[0x40] = { "MOV\tB, B", 1 },
+	[0x41] = { "MOV\tB, C", 1 },
+	[0x42] = { "MOV\tB, D", 1 },
+	[0x43] = { "MOV\tB, E", 1 },
+	[0x44] = { "MOV\tB, H", 1 },
+	[0x45] = { "MOV\tB, L", 1 },
+	[0x46] = { "MOV\tB, M", 1 },
+	[0x47] = { "MOV\tB, A", 1 },
+	[0x48] = { "MOV\tC, B", 1 },
+	[0x49] = { "MOV\tC, C", 1 },
+	[0x4a] = { "MOV\tC, D", 1 },
+	[0x4b] = { "MOV\tC, E", 1 },
+	[0x4c] = { "MOV\tC, H", 1 },
+	[0x4d] = { "MOV\tC, L", 1 },
+	[0x4e] = { "MOV\tC, M", 1 },
+	[0x4f] = { "MOV\tC, A", 1 },
+	[0x50] = { "MOV\tD, B", 1 },
+	[0x51] = { "MOV\tD, C", 1 },
+	[0x52] = { "MOV\tD, D", 1 },
+	[0x53] = { "MOV\tD, E", 1 },
+	[0x54] = { "MOV\tD, H", 1 },
+	[0x55] = { "MOV\tD, L", 1 },
+	[0x56] = { "MOV\tD, M", 1 },
+	[0x57] = { "MOV\tD, A", 1 },
+	[0x58] = { "MOV\tE, B", 1 },
+	[0x59] = { "MOV\tE, C", 1 },
+	[0x5a] = { "MOV\tE, D", 1 },
+	[0x5b] = { "MOV\tE, E", 1 },
+	[0x5c] = { "MOV\tE, H", 1 },
+	[0x5d] = { "MOV\tE, L", 1 },
+	[0x5e] = { "MOV\tE, M", 1 },
+	[0x5f] = { "MOV\tE, A", 1 },
+	[0x60] = { "MOV\tH, B", 1 },
+	[0x61] = { "MOV\tH, C", 1 },
+	[0x62] = { "MOV\tH, D", 1 },
+	[0x63] = { "MOV\tH, E", 1 },
+	[0x64] = { "MOV\tH, H", 1 },
+	[0x65] = { "MOV\tH, L", 1 },
+	[0x66] = { "MOV\tH, M", 1 },
+	[0x67] = { "MOV\tH, A", 1 },
+	[0x68] = { "MOV\tL, B", 1 },
+	[0x69] = { "MOV\tL, C", 1 },
+	[0x6a] = { "MOV\tL, D", 1 },
+	[0x6b] = { "MOV\tL, E", 1 },
+	[0x6c] = { "MOV\tL, H", 1 },
+	[0x6d] = { "MOV\tL, L", 1 },
+	[0x6e] = { "MOV\tL, M", 1 },
+	[0x6f] = { "MOV\tL, A", 1 },
+	[0x70] = { "MOV\tM, B", 1 },
+	[0x71] = { "MOV\tM, C", 1 },
+	[0x72] = { "MOV\tM, D", 1 },
+	[0x73] = { "MOV\tM, E", 1 },
+	[0x74] = { "MOV\tM, H", 1 },
+	[0x75] = { "MOV\tM, L", 1 },
+	[0x76] = { "HLT", 1 },
+	[0x77] = { "MOV\tM, A", 1 },
+	[0x78] = { "MOV\tA, B", 1 },
+	[0x79] = { "MOV\tA, C", 1 },
+	[0x7a] = { "MOV\tA, D", 1 },
+	[0x7b] = { "MOV\tA, E", 1 },
+	[0x7c] = { "MOV\tA, H", 1 },
+	[0x7d] = { "MOV\tA, L", 1 },
+	[0x7e] = { "MOV\tA, M", 1 },
+	[0x7f] = { "MOV\tA, A", 1 },
+	[0x80] = { "ADD\tB", 1 },
+	[0x81] = { "ADD\tC", 1 },
+	[0x82] = { "ADD\tD", 1 },
+	[0x83] = { "ADD\tE", 1 },
+	[0x84] = { "ADD\tH", 1 },
+	[0x85] = { "ADD\tL", 1 },
+	[0x86] = { "ADD\tM", 1 },
+	[0x87] = { "ADD\tA", 1 },
+	[0x88] = { "ADC\tB", 1 },
+	[0x89] = { "ADC\tC", 1 },
+	[0x8a] = { "ADC\tD", 1 },
+	[0x8b] = { "ADC\tE", 1 },
+	[0x8c] = { "ADC\tH", 1 },
+	[0x8d] = { "ADC\tL", 1 },
+	[0x8e] = { "ADC\tM", 1 },
+	[0x8f] = { "ADC\tA", 1 },
+	[0x90] = { "SUB\tB", 1 },
+	[0x91] = { "SUB\tC", 1 },
+	[0x92] = { "SUB\tD", 1 },
+	[0x93] = { "SUB\tE", 1 },
+	[0x94] = { "SUB\tH", 1 },
+	[0x95] = { "SUB\tL", 1 },
+	[0x96] = { "SUB\tM", 1 },
+	[0x97] = { "SUB\tA", 1 },
+	[0x98] = { "SBB\tB", 1 },
+	[0x99] = { "SBB\tC", 1 },
+	[0x9a] = { "SBB\tD", 1 },
+	[0x9b] = { "SBB\tE", 1 },
+	[0x9c] = { "SBB\tH", 1 },
+	[0x9d] = { "SBB\tL", 1 },
+	[0x9e] = { "SBB\tM", 1 },
+	[0x9f] = { "SBB\tA", 1 },
+	[0xa0] = { "ANA\tB", 1 },
+	[0xa1] = { "ANA\tC", 1 },
+	[0xa2] = { "ANA\tD", 1 },
+	[0xa3] = { "ANA\tE", 1 },
+	[0xa4] = { "ANA\tH", 1 },
+	[0xa5] = { "ANA\tL", 1 },
+	[0xa6] = { "ANA\tM", 1 },
+	[0xa7] = { "ANA\tA", 1 },
+	[0xa8] = { "XRA\tB", 1 },
+	[0xa9] = { "XRA\tC", 1 },
+	[0xaa] = { "XRA\tD", 1 },
+	[0xab] = { "XRA\tE", 1 },
+	[0xac] = { "XRA\tH", 1 },
+	[0xad] = { "XRA\tL", 1 },
+	[0xae] = { "XRA\tM", 1 },
+	[0xaf] = { "XRA\tA", 1 },
+	[0xb0] = { "ORA\tB", 1 },
+	[0xb1] = { "ORA\tC", 1 },
+	[0xb2] = { "ORA\tD", 1 },
+	[0xb3] = { "ORA\tE", 1 },
+	[0xb4] = { "ORA\tH", 1 },
+	[0xb5] = { "ORA\tL", 1 },
+	[0xb6] = { "ORA\tM", 1 },
+	[0xb7] = { "ORA\tA", 1 },
+	[0xb8] = { "CMP\tB", 1 },
+	[0xb9] = { "CMP\tC", 1 },
+	[0xba] = { "CMP\tD", 1 },
+	[0xbb] = { "CMP\tE", 1 },
+	[0xbc] = { "CMP\tH", 1 },
+	[0xbd] = { "CMP\tL", 1 },
+	[0xbe] = { "CMP\tM", 1 },
+	[0xbf] = { "CMP\tA", 1 },
+	[0xc0] = { "RNZ", 1 },
+	[0xc1] = { "POP\tB", 1 },
+	[0xc2] = { "JNZ\t0x%02x%02X", 3 },
+	[0xc3] = { "JMP\t0x%02x%02x", 3 },
+	[0xc4] = { "CNZ\t0x%02x%02x", 3 },
+	[0xc5] = { "PUSH\tB", 1 },
+	[0xc6] = { "ADI\t#$0x%02x", 2 },
+	[0xc7] = { "RST\t0", 1 },
+	[0xc8] = { "RZ", 1 },
+	[0xc9] = { "RET", 1 },
+	[0xca] = { "JZ\t0x%02x%02x", 3 },
+	[0xcb] = { "NOP", 1 },
+	[0xcc] = { "CZ\t0x%02x%02x", 3 },
+	[0xcd] = { "CALL\t0x%02x%02x", 3 },
+	[0xce] = { "ACI\t#$0x%02x", 2 },
+	[0xcf] = { "RST\t1", 1 },
+	[0xd0] = { "RNC", 1 },
+	[0xd1] = { "POP\tD", 1 },
+	[0xd2] = { "JNC\t0x%02x%02x", 3 },
+	[0xd3] = { "OUT\t#$0x%02x", 2 },
+	[0xd4] = { "CNC\t0x%02x%02x", 3 },
+	[0xd5] = { "PUSH\tD", 1 },
+	[0xd6] = { "SUI\t#$0x%02x", 2 },
+	[0xd7] = { "RST\t2", 1 },
+	[0xd8] = { "RC", 1 },
+	[0xd9] = { "NOP", 1 },
+	[0xda] = { "JC\t0x%02x%02x", 3 },
+	[0xdb] = { "IN\t#$0x%02x", 2 },
+	[0xdc] = { "CC\t0x%02x%02x", 3 },
+	[0xdd] = { "NOP", 1 },
+	[0xde] = { "SBI\t#$0x%02x", 2 },
+	[0xdf] = { "RST\t3", 1 },
+	[0xe0] = { "RPO", 1 },
+	[0xe1] = { "POP\tH", 1 },
+	[0xe2] = { "JPO\t0x%02x%02x", 3 },
+	[0xe3] = { "XTHL", 1 },
+	[0xe4] = { "CPO\t0x%02x%02x", 3 },
+	[0xe5] = { "PUSH\tH", 1 },
+	[0xe6] = { "ANI\t#$0x%02x", 2 },
+	[0xe7] = { "RST\t4", 1 },
+	[0xe8] = { "RPE", 1 },
+	[0xe9] = { "PCHL", 1 },
+	[0xea] = { "JPE\t0x%02x%02x", 3 },
+	[0xeb] = { "XCHG", 1 },
+	[0xec] = { "CPE\t0x%02x%02x", 3 },
+	[0xed] = { "NOP", 1 },
+	[0xee] = { "XRI\t#$0x%02x", 2 },
+	[0xef] = { "RST\t5", 1 },
+	[0xf0] = { "RP", 1 },
+	[0xf1] = { "POP\tPSW", 1 },
+	[0xf2] = { "JP\t0x%02x%02x", 3 },
+	[0xf3] = { "DI", 1 },
+	[0xf4] = { "CP\t0x%02x%02x", 3 },
+	[0xf5] = { "PUSH\tPSW", 1 },
+	[0xf6] = { "ORI\t#$0x%02x", 2 },
+	[0xf7] = { "RST\t6", 1 },
+	[0xf8] = { "RM", 1 },
+	[0xf9] = { "SPHL", 1 },
+	[0xfa] = { "JM\t0x%02x%02x", 3 },
+	[0xfb] = { "EI", 1 },
+	[0xfc] = { "CM\t0x%02x%02x", 3 },
+	[0xfd] = { "NOP", 1 },
+	[0xfe] = { "CPI\t#$0x%02x", 2 },
+	[0xff] = { "RST\t7", 1 },
+};
+
 static size_t disassemble(const uint8_t *buffer, size_t size, size_t pc);
 
 // Entry point
@@ -101,846 +366,42 @@ int main(int argc, char **argv)
 // Performs the actual disassembly of an instruction
 //
 // Params:
-//		unsigned char *buffer - The buffer containing the machine code
-//		int pc - The program counter. Used to track our place in the buffer
+//		const uint8_t *buffer - The buffer containing the machine code
+//		size_t size - The size of the machine-code buffer
+//		size_t pc - The program counter. Used to track our place in the buffer
 //
 // Returns:
-//		int - The new program counter location. The program counter is incremented to track
-//			  where the next instruction is, particularly after a multi-byte instruction is
-//			  encountered.
+//		size_t - The instruction length, or zero if the instruction is truncated or invalid
 static size_t disassemble(const uint8_t *buffer, size_t size, size_t pc)
 {
-	const uint8_t *opcode = &buffer[pc];
-	size_t opbytes = 1;
+	const Instruction *instruction = &instructions[buffer[pc]];
 
-	/* Determine the encoded length before reading any operand bytes. */
-	switch (*opcode)
+	if (instruction->length > size - pc)
 	{
-		case 0x01: case 0x11: case 0x21: case 0x22: case 0x2a:
-		case 0x31: case 0x32: case 0x3a: case 0xc2: case 0xc3:
-		case 0xc4: case 0xca: case 0xcc: case 0xcd: case 0xd2:
-		case 0xd4: case 0xda: case 0xdc: case 0xe2: case 0xe4:
-		case 0xea: case 0xec: case 0xf2: case 0xf4: case 0xfa:
-		case 0xfc:
-			opbytes = 3;
-			break;
-		case 0x06: case 0x0e: case 0x16: case 0x1e: case 0x26:
-		case 0x2e: case 0x36: case 0x3e: case 0xc6: case 0xce:
-		case 0xd3: case 0xd6: case 0xdb: case 0xde: case 0xe6:
-		case 0xee: case 0xf6: case 0xfe:
-			opbytes = 2;
-			break;
-		default:
-			break;
-	}
-	if (opbytes > size - pc)
-	{
-		fprintf(stderr, "Error: truncated instruction at 0x%04zx (need %zu bytes, have %zu)\n",
-				pc, opbytes, size - pc);
+		fprintf(stderr, "Error: truncated instruction at 0x%04zx (need %u bytes, have %zu)\n",
+				pc, (unsigned int)instruction->length, size - pc);
 		return 0;
 	}
-	printf("0x%04zx  ", pc);
 
-	switch (*opcode)
+	printf("0x%04zx  ", pc);
+	switch (instruction->length)
 	{
-		case 0x00:
-		case 0x08:
-		case 0x10:
-		case 0x18:
-		case 0x28:
-		case 0x38:
-		case 0xcb:
-		case 0xd9:
-		case 0xdd:
-		case 0xed:
-		case 0xfd:
-			printf("NOP");
-			break;
-		case 0x01:
-			printf("LXI\tB, #$0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x02:
-			printf("STAX\tB");
-			break;
-		case 0x03:
-			printf("INX\tB");
-			break;
-		case 0x04:
-			printf("INR\tB");
-			break;
-		case 0x05:
-			printf("DCR\tB");
-			break;
-		case 0x06:
-			printf("MVI\tB, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x07:
-			printf("RLC");
-			break;
-		case 0x09:
-			printf("DAD\tB");
-			break;
-		case 0x0a:
-			printf("LDAX\tB");
-			break;
-		case 0x0b:
-			printf("DCX\tB");
-			break;
-		case 0x0c:
-			printf("INR\tC");
-			break;
-		case 0x0d:
-			printf("DCR\tC");
-			break;
-		case 0x0e:
-			printf("MVI\tC, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x0f:
-			printf("RRC");
-			break;
-		case 0x11:
-			printf("LXI\tD, #$0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x12:
-			printf("STAX\tD");
-			break;
-		case 0x13:
-			printf("INX\tD");
-			break;
-		case 0x14:
-			printf("INR\tD");
-			break;
-		case 0x15:
-			printf("DCR\tD");
-			break;
-		case 0x16:
-			printf("MVI\tD, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x17:
-			printf("RAL");
-			break;
-		case 0x19:
-			printf("DAD\tD");
-			break;
-		case 0x1a:
-			printf("LDAX\tD");
-			break;
-		case 0x1b:
-			printf("DCX\tD");
-			break;
-		case 0x1c:
-			printf("INR\tE");
-			break;
-		case 0x1d:
-			printf("DCR\tE");
-			break;
-		case 0x1e:
-			printf("MVI\tE, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x1f:
-			printf("RAR");
-			break;
-		case 0x20:
-			printf("NOP");
-			break;
-		case 0x21:
-			printf("LXI\tH, #$0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x22:
-			printf("SHLD\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x23:
-			printf("INX\tH");
-			break;
-		case 0x24:
-			printf("INR\tH");
-			break;
-		case 0x25:
-			printf("DCR\tH");
-			break;
-		case 0x26:
-			printf("MVI\tH, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x27:
-			printf("DAA");
-			break;
-		case 0x29:
-			printf("DAD\tH");
-			break;
-		case 0x2a:
-			printf("LHLD\t 0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x2b:
-			printf("DCX\tH");
-			break;
-		case 0x2c:
-			printf("INR\tL");
-			break;
-		case 0x2d:
-			printf("DCR\tL");
-			break;
-		case 0x2e:
-			printf("MVI\tL, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x2f:
-			printf("CMA");
-			break;
-		case 0x30:
-			printf("NOP");
-			break;
-		case 0x31:
-			printf("LXI\tSP, #$0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x32:
-			printf("STA\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x33:
-			printf("INX\tSP");
-			break;
-		case 0x34:
-			printf("INR\tM");
-			break;
-		case 0x35:
-			printf("DCR\tM");
-			break;
-		case 0x36:
-			printf("MVI\tM, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x37:
-			printf("STC");
-			break;
-		case 0x39:
-			printf("DAD\tSP");
-			break;
-		case 0x3a:
-			printf("LDA\t0x%02x%02X", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0x3b:
-			printf("DCX\tSP");
-			break;
-		case 0x3c:
-			printf("INR\tA");
-			break;
-		case 0x3d:
-			printf("DCR\tA");
-			break;
-		case 0x3e:
-			printf("MVI\tA, #$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0x3f:
-			printf("CMC");
-			break;
-		case 0x40:
-			printf("MOV\tB, B");
-			break;
-		case 0x41:
-			printf("MOV\tB, C");
-			break;
-		case 0x42:
-			printf("MOV\tB, D");
-			break;
-		case 0x43:
-			printf("MOV\tB, E");
-			break;
-		case 0x44:
-			printf("MOV\tB, H");
-			break;
-		case 0x45:
-			printf("MOV\tB, L");
-			break;
-		case 0x46:
-			printf("MOV\tB, M");
-			break;
-		case 0x47:
-			printf("MOV\tB, A");
-			break;
-		case 0x48:
-			printf("MOV\tC, B");
-			break;
-		case 0x49:
-			printf("MOV\tC, C");
-			break;
-		case 0x4a:
-			printf("MOV\tC, D");
-			break;
-		case 0x4b:
-			printf("MOV\tC, E");
-			break;
-		case 0x4c:
-			printf("MOV\tC, H");
-			break;
-		case 0x4d:
-			printf("MOV\tC, L");
-			break;
-		case 0x4e:
-			printf("MOV\tC, M");
-			break;
-		case 0x4f:
-			printf("MOV\tC, A");
-			break;
-		case 0x50:
-			printf("MOV\tD, B");
-			break;
-		case 0x51:
-			printf("MOV\tD, C");
-			break;
-		case 0x52:
-			printf("MOV\tD, D");
-			break;
-		case 0x53:
-			printf("MOV\tD, E");
-			break;
-		case 0x54:
-			printf("MOV\tD, H");
-			break;
-		case 0x55:
-			printf("MOV\tD, L");
-			break;
-		case 0x56:
-			printf("MOV\tD, M");
-			break;
-		case 0x57:
-			printf("MOV\tD, A");
-			break;
-		case 0x58:
-			printf("MOV\tE, B");
-			break;
-		case 0x59:
-			printf("MOV\tE, C");
-			break;
-		case 0x5a:
-			printf("MOV\tE, D");
-			break;
-		case 0x5b:
-			printf("MOV\tE, E");
-			break;
-		case 0x5c:
-			printf("MOV\tE, H");
-			break;
-		case 0x5d:
-			printf("MOV\tE, L");
-			break;
-		case 0x5e:
-			printf("MOV\tE, M");
-			break;
-		case 0x5f:
-			printf("MOV\tE, A");
-			break;
-		case 0x60:
-			printf("MOV\tH, B");
-			break;
-		case 0x61:
-			printf("MOV\tH, C");
-			break;
-		case 0x62:
-			printf("MOV\tH, D");
-			break;
-		case 0x63:
-			printf("MOV\tH, E");
-			break;
-		case 0x64:
-			printf("MOV\tH, H");
-			break;
-		case 0x65:
-			printf("MOV\tH, L");
-			break;
-		case 0x66:
-			printf("MOV\tH, M");
-			break;
-		case 0x67:
-			printf("MOV\tH, A");
-			break;
-		case 0x68:
-			printf("MOV\tL, B");
-			break;
-		case 0x69:
-			printf("MOV\tL, C");
-			break;
-		case 0x6a:
-			printf("MOV\tL, D");
-			break;
-		case 0x6b:
-			printf("MOV\tL, E");
-			break;
-		case 0x6c:
-			printf("MOV\tL, H");
-			break;
-		case 0x6d:
-			printf("MOV\tL, L");
-			break;
-		case 0x6e:
-			printf("MOV\tL, M");
-			break;
-		case 0x6f:
-			printf("MOV\tL, A");
-			break;
-		case 0x70:
-			printf("MOV\tM, B");
-			break;
-		case 0x71:
-			printf("MOV\tM, C");
-			break;
-		case 0x72:
-			printf("MOV\tM, D");
-			break;
-		case 0x73:
-			printf("MOV\tM, E");
-			break;
-		case 0x74:
-			printf("MOV\tM, H");
-			break;
-		case 0x75:
-			printf("MOV\tM, L");
-			break;
-		case 0x76:
-			printf("HLT");
-			break;
-		case 0x77:
-			printf("MOV\tM, A");
-			break;
-		case 0x78:
-			printf("MOV\tA, B");
-			break;
-		case 0x79:
-			printf("MOV\tA, C");
-			break;
-		case 0x7a:
-			printf("MOV\tA, D");
-			break;
-		case 0x7b:
-			printf("MOV\tA, E");
-			break;
-		case 0x7c:
-			printf("MOV\tA, H");
-			break;
-		case 0x7d:
-			printf("MOV\tA, L");
-			break;
-		case 0x7e:
-			printf("MOV\tA, M");
-			break;
-		case 0x7f:
-			printf("MOV\tA, A");
-			break;
-		case 0x80:
-			printf("ADD\tB");
-			break;
-		case 0x81:
-			printf("ADD\tC");
-			break;
-		case 0x82:
-			printf("ADD\tD");
-			break;
-		case 0x83:
-			printf("ADD\tE");
-			break;
-		case 0x84:
-			printf("ADD\tH");
-			break;
-		case 0x85:
-			printf("ADD\tL");
-			break;
-		case 0x86:
-			printf("ADD\tM");
-			break;
-		case 0x87:
-			printf("ADD\tA");
-			break;
-		case 0x88:
-			printf("ADC\tB");
-			break;
-		case 0x89:
-			printf("ADC\tC");
-			break;
-		case 0x8a:
-			printf("ADC\tD");
-			break;
-		case 0x8b:
-			printf("ADC\tE");
-			break;
-		case 0x8c:
-			printf("ADC\tH");
-			break;
-		case 0x8d:
-			printf("ADC\tL");
-			break;
-		case 0x8e:
-			printf("ADC\tM");
-			break;
-		case 0x8f:
-			printf("ADC\tA");
-			break;
-		case 0x90:
-			printf("SUB\tB");
-			break;
-		case 0x91:
-			printf("SUB\tC");
-			break;
-		case 0x92:
-			printf("SUB\tD");
-			break;
-		case 0x93:
-			printf("SUB\tE");
-			break;
-		case 0x94:
-			printf("SUB\tH");
-			break;
-		case 0x95:
-			printf("SUB\tL");
-			break;
-		case 0x96:
-			printf("SUB\tM");
-			break;
-		case 0x97:
-			printf("SUB\tA");
-			break;
-		case 0x98:
-			printf("SBB\tB");
-			break;
-		case 0x99:
-			printf("SBB\tC");
-			break;
-		case 0x9a:
-			printf("SBB\tD");
-			break;
-		case 0x9b:
-			printf("SBB\tE");
-			break;
-		case 0x9c:
-			printf("SBB\tH");
-			break;
-		case 0x9d:
-			printf("SBB\tL");
-			break;
-		case 0x9e:
-			printf("SBB\tM");
-			break;
-		case 0x9f:
-			printf("SBB\tA");
-			break;
-		case 0xa0:
-			printf("ANA\tB");
-			break;
-		case 0xa1:
-			printf("ANA\tC");
-			break;
-		case 0xa2:
-			printf("ANA\tD");
-			break;
-		case 0xa3:
-			printf("ANA\tE");
-			break;
-		case 0xa4:
-			printf("ANA\tH");
-			break;
-		case 0xa5:
-			printf("ANA\tL");
-			break;
-		case 0xa6:
-			printf("ANA\tM");
-			break;
-		case 0xa7:
-			printf("ANA\tA");
-			break;
-		case 0xa8:
-			printf("XRA\tB");
-			break;
-		case 0xa9:
-			printf("XRA\tC");
-			break;
-		case 0xaa:
-			printf("XRA\tD");
-			break;
-		case 0xab:
-			printf("XRA\tE");
-			break;
-		case 0xac:
-			printf("XRA\tH");
-			break;
-		case 0xad:
-			printf("XRA\tL");
-			break;
-		case 0xae:
-			printf("XRA\tM");
-			break;
-		case 0xaf:
-			printf("XRA\tA");
-			break;
-		case 0xb0:
-			printf("ORA\tB");
-			break;
-		case 0xb1:
-			printf("ORA\tC");
-			break;
-		case 0xb2:
-			printf("ORA\tD");
-			break;
-		case 0xb3:
-			printf("ORA\tE");
-			break;
-		case 0xb4:
-			printf("ORA\tH");
-			break;
-		case 0xb5:
-			printf("ORA\tL");
-			break;
-		case 0xb6:
-			printf("ORA\tM");
-			break;
-		case 0xb7:
-			printf("ORA\tA");
-			break;
-		case 0xb8:
-			printf("CMP\tB");
-			break;
-		case 0xb9:
-			printf("CMP\tC");
-			break;
-		case 0xba:
-			printf("CMP\tD");
-			break;
-		case 0xbb:
-			printf("CMP\tE");
-			break;
-		case 0xbc:
-			printf("CMP\tH");
-			break;
-		case 0xbd:
-			printf("CMP\tL");
-			break;
-		case 0xbe:
-			printf("CMP\tM");
-			break;
-		case 0xbf:
-			printf("CMP\tA");
-			break;
-		case 0xc0:
-			printf("RNZ");
-			break;
-		case 0xc1:
-			printf("POP\tB");
-			break;
-		case 0xc2:
-			printf("JNZ\t0x%02x%02X", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xc3:
-			printf("JMP\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xc4:
-			printf("CNZ\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xc5:
-			printf("PUSH\tB");
-			break;
-		case 0xc6:
-			printf("ADI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xc7:
-			printf("RST\t0");
-			break;
-		case 0xc8:
-			printf("RZ");
-			break;
-		case 0xc9:
-			printf("RET");
-			break;
-		case 0xca:
-			printf("JZ\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xcc:
-			printf("CZ\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xcd:
-			printf("CALL\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xce:
-			printf("ACI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xcf:
-			printf("RST\t1");
-			break;
-		case 0xd0:
-			printf("RNC");
-			break;
-		case 0xd1:
-			printf("POP\tD");
-			break;
-		case 0xd2:
-			printf("JNC\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xd3:
-			printf("OUT\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xd4:
-			printf("CNC\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xd5:
-			printf("PUSH\tD");
-			break;
-		case 0xd6:
-			printf("SUI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xd7:
-			printf("RST\t2");
-			break;
-		case 0xd8:
-			printf("RC");
-			break;
-		case 0xda: 
-			printf("JC\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xdb:
-			printf("IN\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xdc:
-			printf("CC\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xde:
-			printf("SBI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xdf:
-			printf("RST\t3");
-			break;
-		case 0xe0:
-			printf("RPO");
-			break;
-		case 0xe1:
-			printf("POP\tH");
-			break;
-		case 0xe2:
-			printf("JPO\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xe3:
-			printf("XTHL");
-			break;
-		case 0xe4:
-			printf("CPO\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xe5:
-			printf("PUSH\tH");
-			break;
-		case 0xe6:
-			printf("ANI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xe7:
-			printf("RST\t4");
-			break;
-		case 0xe8:
-			printf("RPE");
-			break;
-		case 0xe9:
-			printf("PCHL");
-			break;
-		case 0xea:
-			printf("JPE\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xeb:
-			printf("XCHG");
-			break;
-		case 0xec:
-			printf("CPE\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xee:
-			printf("XRI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xef:
-			printf("RST\t5");
-			break;
-		case 0xf0:
-			printf("RP");
-			break;
-		case 0xf1:
-			printf("POP\tPSW");
-			break;
-		case 0xf2:
-			printf("JP\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xf3:
-			printf("DI");
-			break;
-		case 0xf4: 
-			printf("CP\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xf5:
-			printf("PUSH\tPSW");
-			break;
-		case 0xf6:
-			printf("ORI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xf7:
-			printf("RST\t6");
-			break;
-		case 0xf8:
-			printf("RM");
-			break;
-		case 0xf9:
-			printf("SPHL");
-			break;
-		case 0xfa:
-			printf("JM\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xfb:
-			printf("EI");
-			break;
-		case 0xfc:
-			printf("CM\t0x%02x%02x", opcode[2], opcode[1]);
-			opbytes = 3;
-			break;
-		case 0xfe:
-			printf("CPI\t#$0x%02x", opcode[1]);
-			opbytes = 2;
-			break;
-		case 0xff:
-			printf("RST\t7");
+		case 1:
+			printf("%s", instruction->format);
+			break;
+		case 2:
+			printf(instruction->format, (unsigned int)buffer[pc + 1]);
+			break;
+		case 3:
+			printf(instruction->format, (unsigned int)buffer[pc + 2],
+					(unsigned int)buffer[pc + 1]);
 			break;
 		default:
-			// We encountered an unknown instruction
-			printf("Unknown Instruction: 0x%02x", *opcode);
-			break;
+			fprintf(stderr, "Error: invalid instruction length for opcode 0x%02x\n",
+					(unsigned int)buffer[pc]);
+			return 0;
 	}
-
 	printf("\n");
-	return opbytes;
+
+	return instruction->length;
 }
